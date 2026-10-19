@@ -106,8 +106,8 @@ class PluginManager:
             if info.get("enabled"):
                 try:
                     self.enable(plugin_id, True)
-                except Exception as error:
-                    self.errors[plugin_id] = str(error)
+                except BaseException as error:
+                    self.errors[plugin_id] = str(error) or type(error).__name__
 
     def _read_json(self, name, default):
         path = self.support / name
@@ -173,7 +173,7 @@ class PluginManager:
             if plugin:
                 try:
                     plugin.on_plugin_unload()
-                except Exception:
+                except BaseException:
                     self.log(plugin_id, traceback.format_exc())
             self._clear(plugin_id)
             if plugin_id in self.registry:
@@ -206,16 +206,16 @@ class PluginManager:
             self.registry[plugin_id].update(metadata, enabled=True)
             self.errors.pop(plugin_id, None)
             self._save_registry()
-        except Exception as error:
+        except BaseException as error:
             plugin = self.instances.get(plugin_id)
             if plugin:
                 try:
                     plugin.on_plugin_unload()
-                except Exception:
+                except BaseException:
                     pass
             self._clear(plugin_id)
             self.registry[plugin_id]["enabled"] = False
-            self.errors[plugin_id] = str(error)
+            self.errors[plugin_id] = str(error) or type(error).__name__
             self.log(plugin_id, traceback.format_exc())
             self._save_registry()
             raise
@@ -303,7 +303,7 @@ class PluginManager:
                             if value[key] is not None and not isinstance(value[key], str):
                                 raise TypeError(f"{key} must be text or None")
                     current.update({k: value[k] for k in ("message", "caption") if k in value})
-            except Exception:
+            except BaseException:
                 self.log(plugin_id, traceback.format_exc())
         return {"cancelled": False, **current}
 
@@ -321,7 +321,7 @@ class PluginManager:
             if name == event:
                 try:
                     hook.after_hooked_method(param)
-                except Exception:
+                except BaseException:
                     self.log(plugin_id, traceback.format_exc())
 
     def request(self, data):
@@ -375,7 +375,7 @@ class PluginManager:
                 for key, plugin in list(self.instances.items()):
                     try:
                         plugin.on_app_event(AppEvent(data["event"]))
-                    except Exception:
+                    except BaseException:
                         self.log(key, traceback.format_exc())
                 return {}
             if operation == "logs":
@@ -398,7 +398,7 @@ def dispatch(request_json):
         if _runtime is None:
             raise RuntimeError("Python runtime is not initialized")
         return json.dumps(_runtime.request(json.loads(request_json)), ensure_ascii=False)
-    except Exception as error:
+    except BaseException as error:
         if _runtime:
             _runtime.log("runtime", traceback.format_exc())
-        return json.dumps({"error": str(error)}, ensure_ascii=False)
+        return json.dumps({"error": str(error) or type(error).__name__}, ensure_ascii=False)

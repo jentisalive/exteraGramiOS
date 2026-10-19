@@ -118,6 +118,22 @@ def apply(root):
             '--//Telegram:disableExtensions',
             '--features=disable_legacy_signing',
             '--jobs=3',''')
+
+    # rules_apple still embeds a provisioning profile unconditionally for a
+    # device application, even when legacy signing is disabled. Omit that
+    # embedding step only for the explicitly unsigned build; retain normal
+    # profile validation for every other build configuration.
+    rules = root / "build-system/bazel-rules/rules_apple/apple/internal/ios_rules.bzl"
+    text = rules.read_text()
+    start = text.index("def _ios_application_impl(ctx):")
+    end = text.index("\ndef ", start + 1)
+    section = text[start:end]
+    anchor = "    if platform_prerequisites.platform.is_device:\n        processor_partials.append(\n            partials.provisioning_profile_partial("
+    if section.count(anchor) != 1:
+        raise RuntimeError("Unsigned application provisioning anchor changed")
+    updated = section.replace(anchor, '    if (platform_prerequisites.platform.is_device and\n        (provisioning_profile or "disable_legacy_signing" not in features)):\n        processor_partials.append(\n            partials.provisioning_profile_partial(')
+    rules.write_text(text[:start] + updated + text[end:])
+
     telegram = "Telegram/BUILD"
     text = (root / telegram).read_text()
     # Both frameworks link the in-app plugin host; they must not enforce the

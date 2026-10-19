@@ -111,6 +111,20 @@ class RuntimeTests(unittest.TestCase):
         self.assertFalse(self.manager.send_hooks)
         self.assertFalse(self.manager.registry["probe"]["enabled"])
 
+    def test_system_exit_during_load_is_contained_and_cleans_hooks(self):
+        self.probe.write_text(PROBE.replace('self.add_on_send_message_hook()', 'self.add_on_send_message_hook(); raise SystemExit()'), encoding="utf-8")
+        self.manager.install(self.probe)
+        with self.assertRaises(SystemExit): self.manager.enable("probe", True)
+        self.assertFalse(self.manager.send_hooks)
+        self.assertNotIn("probe", self.manager.instances)
+        self.assertEqual(self.manager.errors["probe"], "SystemExit")
+
+    def test_system_exit_in_send_hook_does_not_escape_into_native_host(self):
+        self.probe.write_text(PROBE.replace('params.message = params.message.replace("привет", "privet")', 'raise SystemExit()'), encoding="utf-8")
+        self.install_probe()
+        self.assertEqual(self.manager.send(1, {"message": "привет"})["message"], "привет")
+        self.assertTrue(any("SystemExit" in line for line in self.manager.log_lines))
+
     def test_send_hook_failure_keeps_original_text(self):
         self.probe.write_text(PROBE.replace('params.message = params.message.replace("привет", "privet")', 'params.message = "bad"; raise RuntimeError("failure")'), encoding="utf-8")
         self.install_probe()

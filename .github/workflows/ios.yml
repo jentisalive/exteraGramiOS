@@ -64,7 +64,7 @@ jobs:
           if-no-files-found: ignore
 
   client-ipa:
-    needs: [python-tests, native-runtime]
+    needs: [python-tests]
     runs-on: macos-26
     timeout-minutes: 180
     steps:

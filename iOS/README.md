@@ -9,7 +9,7 @@ Native Telegram for iOS with an embedded CPython interpreter and an initial comp
 1. Obtain an application `api_id` and `api_hash` at [my.telegram.org/apps](https://my.telegram.org/apps).
 2. Open this repository's **Settings → Secrets and variables → Actions → New repository secret**. Add `TELEGRAM_API_ID` and `TELEGRAM_API_HASH`. Do not commit either value to source control.
 3. Before merging the PR, open the latest **Actions → exteraGram iOS** push run and choose **Re-run all jobs** after it completes. Once the workflow is on `main`, **Run workflow** is also available; select the branch you want to build.
-4. The workflow runs Python tests and a native iOS Simulator probe first, then attempts native client compilation. With API credentials it also packages and uploads the `exteraGram-iOS` artifact containing `exteraGram-iOS.ipa`; without them, compilation uses placeholders and produces no client download.
+4. The workflow runs Python tests, the native iOS Simulator probe, and native client compilation. The simulator probe and client build run in parallel. With API credentials it also packages and uploads the `exteraGram-iOS` artifact containing `exteraGram-iOS.ipa`; without them, compilation uses placeholders and produces no client download. A download is a test build; check the complete workflow result before using it.
 
 The IPA is ad-hoc signed for testing in an appropriate jailbreak/sideload installation environment. This workflow does not create an Apple development certificate, provisioning profile, App Store build, or APNs identity. Installation with the user's particular jailbreak and TrollStore Lite setup remains a device test.
 
