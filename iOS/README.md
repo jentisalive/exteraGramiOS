@@ -13,7 +13,7 @@ Native Telegram for iOS with an embedded CPython interpreter and an initial comp
 
 The IPA is ad-hoc signed for testing in an appropriate jailbreak/sideload installation environment. This workflow does not create an Apple development certificate, provisioning profile, App Store build, or APNs identity. Installation with the user's particular jailbreak and TrollStore Lite setup remains a device test.
 
-All Apple compilation runs on GitHub's `macos-26` runner with Xcode 26.6. The client supports upstream's iOS deployment target (15.0), including iOS 18.6.2. Dependencies are pinned in [`upstream.json`](upstream.json); the Python support archive is SHA-256 checked before extraction.
+All Apple compilation runs on GitHub Actions. The standalone runtime probe uses `macos-15` / Xcode 16.4 with an iOS 18 simulator; the full Telegram client requires `macos-26` / Xcode 26.6. Without API credentials, CI still attempts a compile-only integration check using placeholder values; it does not package or publish that as a usable client IPA. The client targets upstream's iOS deployment target (15.0), including iOS 18.6.2. Dependencies are pinned in [`upstream.json`](upstream.json); the Python support archive is SHA-256 checked before extraction.
 
 ## Use plugins
 

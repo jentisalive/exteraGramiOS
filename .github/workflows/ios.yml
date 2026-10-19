@@ -43,14 +43,14 @@ jobs:
           fi
 
   native-runtime:
-    runs-on: macos-26
+    runs-on: macos-15
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
         with:
           sparse-checkout: iOS
-      - name: Select the pinned Xcode toolchain
-        run: sudo xcode-select -s /Applications/Xcode_26.6.app/Contents/Developer
+      - name: Select Xcode with an iOS 18 simulator
+        run: sudo xcode-select -s /Applications/Xcode_16.4.app/Contents/Developer
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
@@ -65,7 +65,6 @@ jobs:
 
   client-ipa:
     needs: [python-tests, native-runtime]
-    if: needs.python-tests.outputs.credentials == 'true'
     runs-on: macos-26
     timeout-minutes: 180
     steps:
@@ -93,7 +92,15 @@ jobs:
         env:
           TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
           TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
-        run: python3 port/iOS/scripts/configure.py telegram/build-input-extera.json
+          HAS_CREDENTIALS: ${{ needs.python-tests.outputs.credentials }}
+        run: |
+          if [[ "$HAS_CREDENTIALS" == 'true' ]]; then
+            python3 port/iOS/scripts/configure.py telegram/build-input-extera.json
+          else
+            python3 port/iOS/scripts/configure.py --compile-only telegram/build-input-extera.json
+            echo '### Compile check only — no client IPA will be published' >> "$GITHUB_STEP_SUMMARY"
+            echo 'This run uses placeholder API values to check native integration. Add the two Telegram repository secrets and rerun to obtain a usable client artifact.' >> "$GITHUB_STEP_SUMMARY"
+          fi
       - name: Compile Telegram for arm64 iOS
         working-directory: telegram
         run: |
@@ -104,11 +111,13 @@ jobs:
             --configuration=release_arm64 \
             --outputBuildArtifactsPath=../artifacts/upstream
       - name: Package Python and ad-hoc signed sideload IPA
+        if: needs.python-tests.outputs.credentials == 'true'
         run: |
           python3 port/iOS/scripts/package_ipa.py artifacts/upstream/Telegram.ipa \
             telegram/submodules/ExteraPlugins/vendor/Python.xcframework \
             artifacts/exteraGram-iOS.ipa
       - uses: actions/upload-artifact@v4
+        if: needs.python-tests.outputs.credentials == 'true'
         with:
           name: exteraGram-iOS
           path: artifacts/exteraGram-iOS.ipa

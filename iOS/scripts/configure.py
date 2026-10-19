@@ -6,10 +6,13 @@ import re
 from pathlib import Path
 
 
-def configure(path):
+def configure(path, compile_only=False):
     api_id = os.environ.get("TELEGRAM_API_ID", "")
     api_hash = os.environ.get("TELEGRAM_API_HASH", "")
-    if not api_id.isdecimal() or int(api_id) <= 0 or not re.fullmatch(r"[a-fA-F0-9]{32}", api_hash):
+    if compile_only:
+        # Never packaged or uploaded as a client artifact by the workflow.
+        api_id, api_hash = "0", "0" * 32
+    elif not api_id.isdecimal() or int(api_id) <= 0 or not re.fullmatch(r"[a-fA-F0-9]{32}", api_hash):
         raise SystemExit("Set valid TELEGRAM_API_ID and TELEGRAM_API_HASH repository secrets before building the client.")
     value = {
         "bundle_id": "org.jentisalive.exteragram",
@@ -23,5 +26,9 @@ def configure(path):
 
 
 if __name__ == "__main__":
-    import sys
-    configure(sys.argv[1])
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--compile-only", action="store_true")
+    parser.add_argument("path")
+    args = parser.parse_args()
+    configure(args.path, args.compile_only)
