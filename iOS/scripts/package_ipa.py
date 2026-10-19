@@ -15,7 +15,15 @@ def package(source, framework, output):
     with tempfile.TemporaryDirectory() as temporary:
         root = Path(temporary)
         with zipfile.ZipFile(source) as archive:
-            archive.extractall(root)
+            for entry in archive.infolist():
+                destination = (root / entry.filename).resolve()
+                if not destination.is_relative_to(root):
+                    raise RuntimeError("Unsafe IPA archive path")
+                archive.extract(entry, root)
+                # zipfile extraction doesn't restore Unix executable bits.
+                mode = (entry.external_attr >> 16) & 0o777
+                if mode and destination.exists():
+                    destination.chmod(mode)
         apps = list((root / "Payload").glob("*.app"))
         if len(apps) != 1:
             raise RuntimeError("Expected exactly one application in the upstream IPA")
@@ -23,6 +31,10 @@ def package(source, framework, output):
         install(app, framework)
         info_path = app / "Info.plist"
         info = plistlib.loads(info_path.read_bytes())
+        executable = app / info["CFBundleExecutable"]
+        if executable.parent != app or not executable.is_file():
+            raise RuntimeError("Missing application executable")
+        executable.chmod(executable.stat().st_mode | 0o111)
         info["CFBundleDisplayName"] = "exteraGram"
         info["UIFileSharingEnabled"] = True
         info["LSSupportsOpeningDocumentsInPlace"] = True

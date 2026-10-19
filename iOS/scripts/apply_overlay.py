@@ -73,16 +73,12 @@ def apply(root):
     replace(root, peers, anchor, anchor + '\n                if groupId._asGroup() == .archive && !peerIds.isEmpty {\n                    EPPluginHost.shared().emit(["op": "event", "event": "archive", "account": self.account.peerId.id._internalGetInt64Value()])\n                }')
 
     settings = "submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/Sources/PeerInfoSettingsItems.swift"
+    add_import(root, settings)
     replace(root, settings, "    if displaySetStatus {", '''    items[.advanced]!.append(PeerInfoScreenActionItem(id: 9001, text: "Plugins", icon: UIImage(systemName: "puzzlepiece.extension"), action: {
-        interaction.openSettings(.exteraPlugins)
+        EPPluginHost.shared().presentManager(account: context.account.peerId.id._internalGetInt64Value())
     }))
 
     if displaySetStatus {''')
-    screen = "submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/Sources/PeerInfoScreen.swift"
-    replace(root, screen, "enum PeerInfoSettingsSection {", "enum PeerInfoSettingsSection {\n    case exteraPlugins")
-    actions = "submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/Sources/PeerInfoScreenSettingsActions.swift"
-    add_import(root, actions)
-    replace(root, actions, "        switch section {", "        switch section {\n        case .exteraPlugins:\n            EPPluginHost.shared().presentManager(account: self.context.account.peerId.id._internalGetInt64Value())")
 
     chat = "submodules/TelegramUI/Sources/ChatController.swift"
     add_import(root, chat)

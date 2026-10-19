@@ -13,13 +13,12 @@ import uuid
 from pathlib import Path
 
 import ios_bridge
-from base_plugin import BasePlugin, HookResult, HookStrategy, AppEvent
+from base_plugin import BasePlugin, HookResult, HookStrategy, AppEvent, MethodHook
 
 MAX_PLUGIN_BYTES = 2 * 1024 * 1024
 SUPPORTED_METHODS = {
     ("org.telegram.messenger.MessagesController", "addDialogToFolder"): "archive",
     ("org.telegram.messenger.MessagesController", "deleteDialog"): "delete",
-    ("org.telegram.messenger.MessagesController", "deleteDialogs"): "delete_bulk",
     ("org.telegram.messenger.MessagesController", "deleteMessages"): "delete_message",
     ("org.telegram.messenger.NotificationsController", "processNewMessages"): "notification",
 }
@@ -247,6 +246,8 @@ class PluginManager:
         event = SUPPORTED_METHODS.get((getattr(cls, "name", None), method_name))
         if event is None:
             raise NotImplementedError(f"No iOS event adapter for {cls}.{method_name}")
+        if type(hook).before_hooked_method is not MethodHook.before_hooked_method:
+            raise NotImplementedError("This iOS adapter supports after-event callbacks only")
         key = uuid.uuid4().hex
         self.method_hooks[key] = (plugin_id, event, hook)
         return [_Unhook(self, key)]
@@ -319,7 +320,6 @@ class PluginManager:
         for plugin_id, name, hook in list(self.method_hooks.values()):
             if name == event:
                 try:
-                    hook.before_hooked_method(param)
                     hook.after_hooked_method(param)
                 except Exception:
                     self.log(plugin_id, traceback.format_exc())

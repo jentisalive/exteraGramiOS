@@ -9,7 +9,7 @@ Native Telegram for iOS with an embedded CPython interpreter and an initial comp
 1. Obtain an application `api_id` and `api_hash` at [my.telegram.org/apps](https://my.telegram.org/apps).
 2. Open this repository's **Settings → Secrets and variables → Actions → New repository secret**. Add `TELEGRAM_API_ID` and `TELEGRAM_API_HASH`. Do not commit either value to source control.
 3. Run **Actions → exteraGram iOS → Run workflow**, selecting the `ios/python-plugins` branch (or `main` after merging).
-4. The workflow runs Python tests and a native iOS Simulator probe first. If credentials exist and those checks pass, it builds the native Telegram client and uploads the `exteraGram-iOS` artifact containing `exteraGram-iOS.ipa`.
+4. The workflow runs Python tests and a native iOS Simulator probe first, then attempts native client compilation. With API credentials it also packages and uploads the `exteraGram-iOS` artifact containing `exteraGram-iOS.ipa`; without them, compilation uses placeholders and produces no client download.
 
 The IPA is ad-hoc signed for testing in an appropriate jailbreak/sideload installation environment. This workflow does not create an Apple development certificate, provisioning profile, App Store build, or APNs identity. Installation with the user's particular jailbreak and TrollStore Lite setup remains a device test.
 
@@ -40,7 +40,7 @@ Plugins execute inside the client's process with access to its data. They are no
 
 The original supplied **Translit 1.3.1** (`inglish.plugin`) and **Sound Actions 1.5.0** were exercised unchanged against the Python compatibility layer. Those private test inputs are not redistributed here. Their actual operation inside the complete Telegram app is a separate integration/device check.
 
-The Java-named method adapters are deliberately limited to `MessagesController.addDialogToFolder`, `deleteDialog`, `deleteDialogs`, `deleteMessages`, and `NotificationsController.processNewMessages`. Only the connected native event paths are supported. Unrecognized classes return no adapter; unrecognized methods raise an error. This is not a general Xposed replacement.
+The Java-named method adapters are deliberately limited to after-event callbacks for `MessagesController.addDialogToFolder`, `deleteDialog`, `deleteMessages`, and `NotificationsController.processNewMessages`. Only the connected native event paths are supported. Bulk-delete hooks and before-method interception are not supported. Unrecognized classes return no adapter; unrecognized methods raise an error. This is not a general Xposed replacement.
 
 ## Source and validation
 
