@@ -116,7 +116,7 @@ def apply(root):
     replace(root, build, "self.disable_provisioning_profiles = False", "self.disable_provisioning_profiles = True")
     replace(root, build, "        self.common_args = [", '''        self.common_args = [
             '--//Telegram:disableExtensions',
-            '--features=-apple.codesign',
+            '--features=disable_legacy_signing',
             '--jobs=3',''')
     telegram = "Telegram/BUILD"
     text = (root / telegram).read_text()
