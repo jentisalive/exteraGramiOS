@@ -1,0 +1,118 @@
+name: exteraGram iOS
+
+on:
+  push:
+    branches: [main, 'ios/**']
+    paths: ['iOS/**', '.github/workflows/ios.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python-tests:
+    runs-on: ubuntu-latest
+    outputs:
+      credentials: ${{ steps.credentials.outputs.present }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: iOS
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Test plugin lifecycle and compatibility API
+        run: python3 -m unittest discover -s iOS/tests -v
+      - name: Check client build credentials
+        id: credentials
+        env:
+          TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
+          TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+        shell: bash
+        run: |
+          if [[ -n "$TELEGRAM_API_ID" && -n "$TELEGRAM_API_HASH" ]]; then
+            echo 'present=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'present=false' >> "$GITHUB_OUTPUT"
+            echo '### Client IPA is not built yet' >> "$GITHUB_STEP_SUMMARY"
+            echo 'Add TELEGRAM_API_ID and TELEGRAM_API_HASH repository secrets, then rerun this workflow. Native runtime tests run without these credentials.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  native-runtime:
+    runs-on: macos-26
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: iOS
+      - name: Select the pinned Xcode toolchain
+        run: sudo xcode-select -s /Applications/Xcode_26.6.app/Contents/Developer
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Run Python and native audio/menu hooks in iOS Simulator
+        run: bash iOS/scripts/simulator_smoke.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-runtime-test
+          path: iOS/build/simulator/smoke-result.json
+          if-no-files-found: ignore
+
+  client-ipa:
+    needs: [python-tests, native-runtime]
+    if: needs.python-tests.outputs.credentials == 'true'
+    runs-on: macos-26
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: port
+          sparse-checkout: iOS
+      - uses: actions/checkout@v4
+        with:
+          repository: TelegramMessenger/Telegram-iOS
+          ref: f1dd7a2dbd02cbbf513e75d5695d8d36d1cf5838
+          path: telegram
+          submodules: recursive
+          persist-credentials: false
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_26.6.app/Contents/Developer
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Apply pinned source overlay
+        run: python3 port/iOS/scripts/apply_overlay.py telegram
+      - name: Fetch checksum-verified Python framework
+        run: python3 port/iOS/scripts/python_support.py download telegram/submodules/ExteraPlugins/vendor
+      - name: Generate private client configuration
+        env:
+          TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
+          TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+        run: python3 port/iOS/scripts/configure.py telegram/build-input-extera.json
+      - name: Compile Telegram for arm64 iOS
+        working-directory: telegram
+        run: |
+          python3 build-system/Make/Make.py build \
+            --configurationPath=build-input-extera.json \
+            --xcodeManagedCodesigning \
+            --buildNumber="${GITHUB_RUN_NUMBER}" \
+            --configuration=release_arm64 \
+            --outputBuildArtifactsPath=../artifacts/upstream
+      - name: Package Python and ad-hoc signed sideload IPA
+        run: |
+          python3 port/iOS/scripts/package_ipa.py artifacts/upstream/Telegram.ipa \
+            telegram/submodules/ExteraPlugins/vendor/Python.xcframework \
+            artifacts/exteraGram-iOS.ipa
+      - uses: actions/upload-artifact@v4
+        with:
+          name: exteraGram-iOS
+          path: artifacts/exteraGram-iOS.ipa
+          if-no-files-found: error
+      - name: Remove temporary credential file
+        if: always()
+        run: rm -f telegram/build-input-extera.json
