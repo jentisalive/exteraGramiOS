@@ -125,3 +125,41 @@ jobs:
       - name: Remove temporary credential file
         if: always()
         run: rm -f telegram/build-input-extera.json
+
+  publish-preview:
+    needs: [python-tests, native-runtime, client-ipa]
+    if: needs.python-tests.outputs.credentials == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: iOS/docs
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: exteraGram-iOS
+          path: release
+      - name: Publish experimental IPA prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s release/exteraGram-iOS.ipa
+          (cd release && sha256sum exteraGram-iOS.ipa > SHA256SUMS.txt)
+          cp iOS/docs/RELEASE_NOTES.md release-notes.md
+          echo >> release-notes.md
+          echo "Source commit: ${GITHUB_SHA}" >> release-notes.md
+          echo "Build: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" >> release-notes.md
+          release_tag="ios-preview-${GITHUB_RUN_ID}"
+          if ! gh release view "$release_tag" > /dev/null 2>&1; then
+            gh release create "$release_tag" --target "$GITHUB_SHA" \
+              --title "exteraGram iOS — Preview ${GITHUB_RUN_NUMBER}" \
+              --notes-file release-notes.md --draft --prerelease --latest=false
+          fi
+          gh release upload "$release_tag" release/exteraGram-iOS.ipa release/SHA256SUMS.txt --clobber
+          gh release edit "$release_tag" --notes-file release-notes.md --draft=false --prerelease --latest=false
+          gh release view "$release_tag" --json url --jq .url >> "$GITHUB_STEP_SUMMARY"
