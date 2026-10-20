@@ -1,0 +1,48 @@
+from pathlib import Path
+from base_plugin import BasePlugin, MethodHook, HookResult, HookStrategy, MenuItemData, MenuItemType
+from hook_utils import find_class
+from file_utils import get_audios_dir
+from android.media import MediaPlayer
+from ui.settings import Header, Switch, Text
+
+__id__ = "ios_probe"
+__name__ = "iOS integration probe"
+__version__ = "1.0"
+
+
+class EventHook(MethodHook):
+    def __init__(self, plugin):
+        self.plugin = plugin
+
+    def after_hooked_method(self, param):
+        self.plugin.set_setting("events", self.plugin.get_setting("events", 0) + 1)
+
+
+class Probe(BasePlugin):
+    def on_plugin_load(self):
+        self.add_on_send_message_hook()
+        self.hook_all_methods(find_class("org.telegram.messenger.MessagesController"), "deleteMessages", EventHook(self))
+        self.add_menu_item(MenuItemData(menu_type=MenuItemType.CHAT_ACTION_MENU, text="Toggle", on_click=self.toggle))
+        self.player = MediaPlayer()
+        self.player.setDataSource(str(Path(get_audios_dir()) / "probe.wav"))
+        self.player.prepare()
+
+    def toggle(self, context):
+        self.set_setting("enabled", not self.get_setting("enabled", True))
+
+    def on_send_message_hook(self, account, params):
+        if not self.get_setting("enabled", True):
+            return HookResult()
+        params.message = params.message.replace("привет", "privet")
+        count = self.get_setting("events", 0)
+        if count:
+            params.message += "#" + str(count)
+        self.player.seekTo(0)
+        self.player.start()
+        return HookResult(strategy=HookStrategy.MODIFY, params=params)
+
+    def create_settings(self):
+        return [Header(text="Probe"), Switch(key="enabled", default=True), Text(text="Native settings work")]
+
+    def on_plugin_unload(self):
+        self.player.release()

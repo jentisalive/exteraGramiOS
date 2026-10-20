@@ -1,3 +1,5 @@
+> **iOS port:** The native Python-plugin implementation preview and GitHub Actions instructions are in [iOS/README.md](iOS/README.md). The Android project below is retained unchanged.
+
 <img src="https://i.imgur.com/5EmxevP.png" width="150" align="left"/>
 
 ## exteraGram

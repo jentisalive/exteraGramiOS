@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+vendor/
+build/
+*.ipa
+configuration.json
+*.log

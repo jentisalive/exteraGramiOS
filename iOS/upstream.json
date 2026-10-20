@@ -1,0 +1,8 @@
+{
+  "repository": "TelegramMessenger/Telegram-iOS",
+  "commit": "f1dd7a2dbd02cbbf513e75d5695d8d36d1cf5838",
+  "xcode": "26.6",
+  "runner": "macos-26",
+  "python_url": "https://github.com/beeware/Python-Apple-support/releases/download/3.13-b15/Python-3.13-iOS-support.b15.tar.gz",
+  "python_sha256": "80175765a31babe43b0910395cf86ba4e8412adf1902b069d55b74d523ecc5d1"
+}
