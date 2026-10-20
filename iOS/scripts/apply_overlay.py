@@ -70,7 +70,7 @@ def apply(root):
     peers = "submodules/TelegramCore/Sources/TelegramEngine/Peers/TelegramEnginePeers.swift"
     add_import(root, peers)
     anchor = "                    _internal_updatePeerGroupIdInteractively(transaction: transaction, peerId: peerId, groupId: groupId._asGroup())\n                }"
-    replace(root, peers, anchor, anchor + '\n                if groupId._asGroup() == .archive && !peerIds.isEmpty {\n                    EPPluginHost.shared().emit(["op": "event", "event": "archive", "account": self.account.peerId.id._internalGetInt64Value()])\n                }')
+    replace(root, peers, anchor, anchor + '\n                if groupId._asGroup() == Namespaces.PeerGroup.archive && !peerIds.isEmpty {\n                    EPPluginHost.shared().emit(["op": "event", "event": "archive", "account": self.account.peerId.id._internalGetInt64Value()])\n                }')
 
     settings = "submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/Sources/PeerInfoSettingsItems.swift"
     add_import(root, settings)
