@@ -13,7 +13,9 @@ from python_support import install
 
 def package(source, framework, output):
     with tempfile.TemporaryDirectory() as temporary:
-        root = Path(temporary)
+        # macOS aliases /var to /private/var. Compare canonical paths on both
+        # sides, otherwise every legitimate archive entry appears to escape.
+        root = Path(temporary).resolve()
         with zipfile.ZipFile(source) as archive:
             for entry in archive.infolist():
                 destination = (root / entry.filename).resolve()
